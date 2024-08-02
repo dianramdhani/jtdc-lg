@@ -1,0 +1,32 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+type CheckoutAccounts {
+  cookies           String
+  id                String  @db.ObjectId
+  lastCookiesUpdate String
+  lastLogin         String?
+  point             Int?
+  username          String
+}
+
+model account {
+  id                String @id @default(auto()) @map("_id") @db.ObjectId
+  cookies           String
+  lastCookiesUpdate String
+  lastLogin         String
+  point             Int
+  username          String
+}
+
+model checkout {
+  id       String             @id @default(auto()) @map("_id") @db.ObjectId
+  accounts CheckoutAccounts[]
+  time     String?
+}
