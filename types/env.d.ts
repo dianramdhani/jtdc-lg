@@ -4,6 +4,7 @@ declare global {
       PASSWORD: string;
       URL: string;
       URL_QUERY: string;
+      CHROME_PATH: string;
     }
   }
 }
