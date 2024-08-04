@@ -4,6 +4,7 @@ import { PrismaService } from 'src/database/prisma/prisma.service';
 import { Account } from './entities/account.entity';
 import puppeteer from 'puppeteer';
 import { AuthResponse } from './types/auth-response';
+import { Cron } from '@nestjs/schedule';
 
 @Injectable()
 export class AccountService {
@@ -15,7 +16,8 @@ export class AccountService {
     return accounts.map((account) => plainToClass(Account, account));
   }
 
-  async getPoint() {
+  @Cron('0 30 21 * * *')
+  private async getPoint() {
     const accounts = await this.getAll();
     for (const account of accounts) {
       const browser = await puppeteer.launch({ headless: true });

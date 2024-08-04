@@ -12,9 +12,4 @@ export class AccountController {
   getAll() {
     return this.accountService.getAll();
   }
-
-  @Get('/point')
-  getPoint() {
-    return this.accountService.getPoint();
-  }
 }
