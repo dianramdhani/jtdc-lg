@@ -16,11 +16,14 @@ export class AccountService {
     return accounts.map((account) => plainToClass(Account, account));
   }
 
-  @Cron('0 30 21 * * *')
+  @Cron('0 47 21 * * *')
   private async getPoint() {
     const accounts = await this.getAll();
     for (const account of accounts) {
-      const browser = await puppeteer.launch({ headless: true });
+      const browser = await puppeteer.launch({
+        headless: true,
+        executablePath: process.env.CHROME_PATH,
+      });
       const page = await browser.newPage();
       await page.setRequestInterception(true);
       page;

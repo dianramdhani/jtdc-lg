@@ -21,7 +21,7 @@ model account {
   cookies           String
   lastCookiesUpdate String
   lastLogin         String
-  point             Int
+  point             BigInt
   username          String
 }
 
