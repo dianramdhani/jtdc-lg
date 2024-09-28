@@ -12,4 +12,21 @@ export class AccountController {
   getAll() {
     return this.accountService.getAll();
   }
+
+  @Get('get-point')
+  getPoint() {
+    this.accountService.getPoint();
+    return 'On process';
+  }
+
+  @Get('login')
+  login() {
+    this.accountService.login();
+    return 'On process';
+  }
+
+  @Get('test')
+  test() {
+    return this.accountService.test();
+  }
 }
