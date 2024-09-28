@@ -16,7 +16,7 @@ export class AccountService {
     return accounts.map((account) => plainToClass(Account, account));
   }
 
-  @Cron('0 47 21 * * *')
+  @Cron('30 28 0 * * *')
   private async getPoint() {
     const accounts = await this.getAll();
     for (const account of accounts) {
