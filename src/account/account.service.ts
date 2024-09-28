@@ -12,12 +12,22 @@ export class AccountService {
   constructor(private readonly prismaService: PrismaService) {}
 
   async getAll() {
-    const accounts = await this.prismaService.account.findMany();
+    const accounts = await this.prismaService.account.findMany({
+      orderBy: { point: 'desc' },
+    });
     return accounts.map((account) => plainToClass(Account, account));
   }
 
+  @Cron('30 20 0 * * *')
+  async login() {
+    const accounts = await this.getAll();
+    for (const account of accounts) {
+      await this.loginAccount(account.username);
+    }
+  }
+
   @Cron('30 28 0 * * *')
-  private async getPoint() {
+  async getPoint() {
     const accounts = await this.getAll();
     for (const account of accounts) {
       const browser = await puppeteer.launch({
@@ -85,6 +95,34 @@ export class AccountService {
         process.env.PASSWORD,
       );
     }
-    return this.getAll();
+  }
+
+  private async loginAccount(username: string) {
+    const start = new Date().getTime();
+
+    try {
+      const browser = await puppeteer.launch({
+        headless: true,
+        executablePath: process.env.CHROME_PATH,
+      });
+      const page = await browser.newPage();
+      await page.goto(`${process.env.URL}/login`, { waitUntil: 'load' });
+      const usernameFld = 'input[name="username"]';
+      await page.waitForSelector(usernameFld);
+      await page.type(usernameFld, username);
+      const passwordFld = 'input[name="password"]';
+      await page.waitForSelector(passwordFld);
+      await page.type(passwordFld, process.env.PASSWORD);
+      const loginBtn = '.qa-login-button';
+      await page.waitForSelector(loginBtn);
+      await page.click(loginBtn);
+      await page.waitForNavigation();
+      await browser.close();
+      console.error(
+        `Success login ${username} ${new Date().getTime() - start}`,
+      );
+    } catch (error) {
+      console.error(`Failed login ${username} ${new Date().getTime() - start}`);
+    }
   }
 }
