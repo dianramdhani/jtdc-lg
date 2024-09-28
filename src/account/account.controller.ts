@@ -24,4 +24,9 @@ export class AccountController {
     this.accountService.login();
     return 'On process';
   }
+
+  @Get('test')
+  test() {
+    return this.accountService.test();
+  }
 }

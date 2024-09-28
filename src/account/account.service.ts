@@ -18,6 +18,21 @@ export class AccountService {
     return accounts.map((account) => plainToClass(Account, account));
   }
 
+  async test() {
+    try {
+      const browser = await puppeteer.launch({
+        headless: true,
+        executablePath: process.env.CHROME_PATH,
+      });
+      const page = await browser.newPage();
+      await page.goto(process.env.URL, { waitUntil: 'domcontentloaded' });
+      await browser.close();
+      return 'berhasil';
+    } catch (error) {
+      if (error instanceof Error) return error.message;
+    }
+  }
+
   @Cron('30 20 0 * * *')
   async login() {
     const accounts = await this.getAll();
@@ -106,7 +121,9 @@ export class AccountService {
         executablePath: process.env.CHROME_PATH,
       });
       const page = await browser.newPage();
-      await page.goto(`${process.env.URL}/login`, { waitUntil: 'load' });
+      await page.goto(`${process.env.URL}/login`, {
+        waitUntil: 'networkidle2',
+      });
       const usernameFld = 'input[name="username"]';
       await page.waitForSelector(usernameFld);
       await page.type(usernameFld, username);
