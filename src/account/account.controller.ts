@@ -1,14 +1,12 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 import { AccountService } from './account.service';
-import { ApiResponse } from '@nestjs/swagger';
-import { Account } from './entities/account.entity';
+import CheckoutDto from './dto/checkout.dto';
 
 @Controller('account')
 export class AccountController {
   constructor(private readonly accountService: AccountService) {}
 
   @Get()
-  @ApiResponse({ type: Account, isArray: true })
   getAll() {
     return this.accountService.getAll();
   }
@@ -28,5 +26,10 @@ export class AccountController {
   @Get('test')
   test() {
     return this.accountService.test();
+  }
+
+  @Get('checkout')
+  checkout(@Query() checkoutDto: CheckoutDto) {
+    return this.accountService.checkout(checkoutDto);
   }
 }
