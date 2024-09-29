@@ -11,8 +11,9 @@ export class CheckoutService {
 
   async checkout(cookies: Cookie[], time: string) {
     const browser = await puppeteer.launch({
-      headless: false,
+      headless: true,
       executablePath: process.env.CHROME_PATH,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
     const page = await browser.newPage();
     page.setRequestInterception(true);
