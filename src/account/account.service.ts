@@ -1,21 +1,29 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { plainToClass } from 'class-transformer';
 import { PrismaService } from 'src/database/prisma/prisma.service';
-import { Account } from './entities/account.entity';
-import puppeteer from 'puppeteer';
+import puppeteer, { Browser, Cookie } from 'puppeteer';
 import { AuthResponse } from './types/auth-response';
 import { Cron } from '@nestjs/schedule';
+import { formatInTimeZone } from 'date-fns-tz';
+import { account } from '@prisma/client';
+import CheckoutDto from './dto/checkout.dto';
+import { CheckoutService } from './checkout.service';
 
 @Injectable()
 export class AccountService {
   headers!: any;
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly checkoutService: CheckoutService,
+  ) {}
 
   async getAll() {
-    const accounts = await this.prismaService.account.findMany({
-      orderBy: { point: 'desc' },
-    });
-    return accounts.map((account) => plainToClass(Account, account));
+    return (
+      await this.prismaService.account.findMany({
+        select: { username: true, point: true },
+        orderBy: { point: 'desc' },
+      })
+    ).map(({ username, point }) => ({ username, point: Number(point) }));
   }
 
   async test() {
@@ -23,6 +31,7 @@ export class AccountService {
       const browser = await puppeteer.launch({
         headless: true,
         executablePath: process.env.CHROME_PATH,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
       });
       const page = await browser.newPage();
       await page.goto(process.env.URL, { waitUntil: 'domcontentloaded' });
@@ -33,21 +42,60 @@ export class AccountService {
     }
   }
 
+  async checkout(checkoutDto: CheckoutDto) {
+    let account: account;
+    try {
+      account = await this.prismaService.account.findFirst({
+        where: { username: checkoutDto.username },
+      });
+    } catch (error) {
+      throw new NotFoundException('Account not found');
+    }
+
+    this.checkoutService.checkout(
+      JSON.parse(account.cookies),
+      checkoutDto.time,
+    );
+  }
+
   @Cron('30 20 0 * * *')
   async login() {
-    const accounts = await this.getAll();
+    const accounts = await this.prismaService.account.findMany({
+      select: { id: true, username: true },
+      orderBy: { point: 'desc' },
+    });
     for (const account of accounts) {
-      await this.loginAccount(account.username);
+      const cookies = await this.loginAccount(account.username);
+      await this.prismaService.account.update({
+        where: { id: account.id },
+        data: {
+          cookies: JSON.stringify(cookies),
+          lastCookiesUpdate: formatInTimeZone(
+            new Date(),
+            'Asia/Jakarta',
+            'dd-MM-yyyy HH:mm:ss',
+          ),
+          lastLogin: formatInTimeZone(
+            new Date(),
+            'Asia/Jakarta',
+            'dd-MM-yyyy HH:mm:ss',
+          ),
+        },
+      });
     }
   }
 
   @Cron('30 28 0 * * *')
   async getPoint() {
-    const accounts = await this.getAll();
+    const accounts = await this.prismaService.account.findMany({
+      select: { id: true, username: true },
+      orderBy: { point: 'desc' },
+    });
     for (const account of accounts) {
       const browser = await puppeteer.launch({
         headless: true,
         executablePath: process.env.CHROME_PATH,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
       });
       const page = await browser.newPage();
       await page.setRequestInterception(true);
@@ -71,11 +119,13 @@ export class AccountService {
               AuthResponse,
               JSON.parse(text.replace('~ABC-auth ', '')),
             );
-            const result = await this.prismaService.account.update({
-              data: { point: authResponse.signInByEmail.result.user.points },
-              where: { id: account.id },
-            });
-            console.log(result);
+            console.log(
+              await this.prismaService.account.update({
+                select: { username: true, point: true },
+                data: { point: authResponse.signInByEmail.result.user.points },
+                where: { id: account.id },
+              }),
+            );
           }
         });
       await page.goto(process.env.URL);
@@ -114,11 +164,14 @@ export class AccountService {
 
   private async loginAccount(username: string) {
     const start = new Date().getTime();
+    let browser: Browser;
+    let cookies: Cookie[] = [];
 
     try {
-      const browser = await puppeteer.launch({
+      browser = await puppeteer.launch({
         headless: true,
         executablePath: process.env.CHROME_PATH,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
       });
       const page = await browser.newPage();
       await page.goto(`${process.env.URL}/login`, {
@@ -130,16 +183,23 @@ export class AccountService {
       const passwordFld = 'input[name="password"]';
       await page.waitForSelector(passwordFld);
       await page.type(passwordFld, process.env.PASSWORD);
+      const rememberChk = '#remember-me';
+      await page.waitForSelector(rememberChk);
+      await page.click(rememberChk);
       const loginBtn = '.qa-login-button';
       await page.waitForSelector(loginBtn);
       await page.click(loginBtn);
-      await page.waitForNavigation();
-      await browser.close();
+      await page.waitForNavigation({ waitUntil: 'networkidle2' });
+      cookies = await page.cookies();
       console.error(
         `Success login ${username} ${new Date().getTime() - start}`,
       );
     } catch (error) {
       console.error(`Failed login ${username} ${new Date().getTime() - start}`);
+    } finally {
+      await browser.close();
     }
+
+    return cookies;
   }
 }
