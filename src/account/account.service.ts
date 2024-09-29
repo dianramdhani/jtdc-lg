@@ -7,11 +7,15 @@ import { Cron } from '@nestjs/schedule';
 import { formatInTimeZone } from 'date-fns-tz';
 import { account } from '@prisma/client';
 import CheckoutDto from './dto/checkout.dto';
+import { CheckoutService } from './checkout.service';
 
 @Injectable()
 export class AccountService {
   headers!: any;
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly checkoutService: CheckoutService,
+  ) {}
 
   async getAll() {
     return (
@@ -47,15 +51,10 @@ export class AccountService {
       throw new NotFoundException('Account not found');
     }
 
-    const browser = await puppeteer.launch({
-      headless: false,
-      executablePath: process.env.CHROME_PATH,
-    });
-    const page = await browser.newPage();
-    await page.setCookie(...JSON.parse(account.cookies));
-    await page.goto(process.env.URL, {
-      waitUntil: 'networkidle2',
-    });
+    this.checkoutService.checkout(
+      JSON.parse(account.cookies),
+      checkoutDto.time,
+    );
   }
 
   @Cron('30 20 0 * * *')

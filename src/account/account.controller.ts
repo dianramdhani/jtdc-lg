@@ -30,6 +30,7 @@ export class AccountController {
 
   @Get('checkout')
   checkout(@Query() checkoutDto: CheckoutDto) {
-    return this.accountService.checkout(checkoutDto);
+    this.accountService.checkout(checkoutDto);
+    return 'On process';
   }
 }
