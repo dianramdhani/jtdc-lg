@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { plainToClass } from 'class-transformer';
 import { PrismaService } from 'src/database/prisma/prisma.service';
 import puppeteer, { Browser, Cookie } from 'puppeteer';
@@ -11,6 +11,7 @@ import { CheckoutService } from './checkout.service';
 
 @Injectable()
 export class AccountService {
+  private readonly logger = new Logger(AccountService.name);
   headers!: any;
   constructor(
     private readonly prismaService: PrismaService,
@@ -86,12 +87,60 @@ export class AccountService {
   }
 
   @Cron('30 28 0 * * *')
-  async getPoint() {
+  async getPointAllAccounts() {
     const accounts = await this.prismaService.account.findMany({
-      select: { id: true, username: true },
       orderBy: { point: 'desc' },
     });
     for (const account of accounts) {
+      await this.getPoint(account);
+    }
+  }
+
+  private async loginAccount(username: string) {
+    const start = new Date().getTime();
+    let browser: Browser;
+    let cookies: Cookie[] = [];
+
+    try {
+      browser = await puppeteer.launch({
+        headless: true,
+        executablePath: process.env.CHROME_PATH,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      });
+      const page = await browser.newPage();
+      await page.goto(`${process.env.URL}/login`, {
+        waitUntil: 'networkidle2',
+      });
+      const usernameFld = 'input[name="username"]';
+      await page.waitForSelector(usernameFld);
+      await page.type(usernameFld, username);
+      const passwordFld = 'input[name="password"]';
+      await page.waitForSelector(passwordFld);
+      await page.type(passwordFld, process.env.PASSWORD);
+      const rememberChk = '#remember-me';
+      await page.waitForSelector(rememberChk);
+      await page.click(rememberChk);
+      const loginBtn = '.qa-login-button';
+      await page.waitForSelector(loginBtn);
+      await page.click(loginBtn);
+      await page.waitForNavigation({ waitUntil: 'networkidle2' });
+      cookies = await page.cookies();
+      this.logger.log(
+        `Success login ${username} ${new Date().getTime() - start}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed login ${username} ${new Date().getTime() - start}`,
+      );
+    } finally {
+      await browser.close();
+    }
+
+    return cookies;
+  }
+
+  private getPoint(account: account) {
+    return new Promise(async (resolve, reject) => {
       const browser = await puppeteer.launch({
         headless: true,
         executablePath: process.env.CHROME_PATH,
@@ -119,13 +168,23 @@ export class AccountService {
               AuthResponse,
               JSON.parse(text.replace('~ABC-auth ', '')),
             );
-            console.log(
-              await this.prismaService.account.update({
-                select: { username: true, point: true },
+            try {
+              const updatedAccount = await this.prismaService.account.update({
                 data: { point: authResponse.signInByEmail.result.user.points },
                 where: { id: account.id },
-              }),
-            );
+              });
+              this.logger.log(
+                `Update point ${updatedAccount.username} ${updatedAccount.point}`,
+              );
+              resolve(updatedAccount);
+            } catch (error) {
+              if (error instanceof Error) {
+                this.logger.error(
+                  `Update point failed. Detail: ${error.message}`,
+                );
+                reject(error);
+              }
+            }
           }
         });
       await page.goto(process.env.URL);
@@ -159,47 +218,6 @@ export class AccountService {
         process.env.URL_QUERY,
         process.env.PASSWORD,
       );
-    }
-  }
-
-  private async loginAccount(username: string) {
-    const start = new Date().getTime();
-    let browser: Browser;
-    let cookies: Cookie[] = [];
-
-    try {
-      browser = await puppeteer.launch({
-        headless: true,
-        executablePath: process.env.CHROME_PATH,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-      });
-      const page = await browser.newPage();
-      await page.goto(`${process.env.URL}/login`, {
-        waitUntil: 'networkidle2',
-      });
-      const usernameFld = 'input[name="username"]';
-      await page.waitForSelector(usernameFld);
-      await page.type(usernameFld, username);
-      const passwordFld = 'input[name="password"]';
-      await page.waitForSelector(passwordFld);
-      await page.type(passwordFld, process.env.PASSWORD);
-      const rememberChk = '#remember-me';
-      await page.waitForSelector(rememberChk);
-      await page.click(rememberChk);
-      const loginBtn = '.qa-login-button';
-      await page.waitForSelector(loginBtn);
-      await page.click(loginBtn);
-      await page.waitForNavigation({ waitUntil: 'networkidle2' });
-      cookies = await page.cookies();
-      console.error(
-        `Success login ${username} ${new Date().getTime() - start}`,
-      );
-    } catch (error) {
-      console.error(`Failed login ${username} ${new Date().getTime() - start}`);
-    } finally {
-      await browser.close();
-    }
-
-    return cookies;
+    });
   }
 }

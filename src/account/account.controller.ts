@@ -11,9 +11,9 @@ export class AccountController {
     return this.accountService.getAll();
   }
 
-  @Get('get-point')
-  getPoint() {
-    this.accountService.getPoint();
+  @Get('get-point-all-accounts')
+  getPointAllAcounts() {
+    this.accountService.getPointAllAccounts();
     return 'On process';
   }
 
