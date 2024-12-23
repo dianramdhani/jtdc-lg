@@ -134,14 +134,24 @@ export class CheckoutService {
                 'mutation updateSummaryPayment($request: UpdateSummaryPaymentRequest!) {\n  updateSummaryPayment(request: $request) {\n    meta {\n      message\n      error\n      code\n    }\n    result {\n      status\n    }\n  }\n}\n',
             },
             {
-              operationName: 'updateSummaryJTPoint',
+              operationName: 'getSummaryCheckoutV2',
               variables: {
                 request: {
-                  isJTPoint: true,
+                  isChanges: true,
                 },
               },
               query:
-                'mutation updateSummaryJTPoint($request: UpdateSummaryJTPointRequest!) {\n  updateSummaryJTPoint(request: $request) {\n    meta {\n      message\n      error\n      code\n    }\n    result {\n      status\n    }\n  }\n}\n',
+                'query getSummaryCheckoutV2($request: SummaryCheckoutV2Request!) {\n  getSummaryCheckoutV2(request: $request) {\n    meta {\n      message\n      error\n      code\n    }\n    result {\n      quantity\n      voucherAmount\n      JTPointUsed\n      bankPointRewardUsed\n      insuranceAmount\n      total\n      subTotal\n      pointReward\n      shipping {\n        shippingAmount\n        shippingFinalAmount\n      }\n      minimumPaymentInfo\n    }\n  }\n}\n',
+            },
+            {
+              operationName: 'getCheckoutSKUList',
+              variables: {
+                request: {
+                  isValidate: false,
+                },
+              },
+              query:
+                'query getCheckoutSKUList($request: CheckoutSKUListRequest) {\n  getCheckoutSKUList(request: $request) {\n    meta {\n      message\n      error\n      code\n    }\n    result {\n      items {\n        productID\n        productImage\n        productName\n        productSKU\n        productFinalPrice\n        productQuantity\n        productWeight\n        productBrandCode\n        productInfo {\n          message\n          quantity\n          stock\n        }\n        isBundling\n        isPreorder\n        analytic {\n          brandID\n          brandName\n          categoryID\n          categoryName\n          function\n          lugWidth\n          movement\n          productBrand\n          productColour\n          productID\n          productImage\n          productLink\n          productName\n          productPrice\n          productSku\n          strapMaterial\n          subBrandID\n          subBrandName\n          productQty\n          subtotal\n          items {\n            index\n            item_id\n            item_name\n            item_brand\n            item_category\n            item_category2\n            item_category3\n            item_category4\n            item_category5\n            item_variant\n            item_list_id\n            item_list_name\n            coupon\n            price\n            quantity\n            discount\n            currency\n            affiliation\n          }\n        }\n        productBundling {\n          productID\n          productImage\n          productName\n          productSKU\n          productFinalPrice\n          productQuantity\n          productWeight\n          productBrandCode\n          productInfo {\n            message\n            quantity\n            stock\n          }\n          analytic {\n            brandID\n            brandName\n            categoryID\n            categoryName\n            function\n            lugWidth\n            movement\n            productBrand\n            productColour\n            productID\n            productImage\n            productLink\n            productName\n            productPrice\n            productSku\n            strapMaterial\n            subBrandID\n            subBrandName\n            productQty\n            subtotal\n            items {\n              index\n              item_id\n              item_name\n              item_brand\n              item_category\n              item_category2\n              item_category3\n              item_category4\n              item_category5\n              item_variant\n              item_list_id\n              item_list_name\n              coupon\n              price\n              quantity\n              discount\n              currency\n              affiliation\n            }\n          }\n        }\n      }\n    }\n  }\n}\n',
             },
             {
               operationName: 'addOrderV2',
@@ -149,10 +159,34 @@ export class CheckoutService {
               query:
                 'mutation addOrderV2($request: addOrderV2Request) {\n  addOrderV2(request: $request) {\n    meta {\n      message\n      error\n      code\n    }\n    result {\n      status\n      payment {\n        status\n        orderId\n        redirectUrl\n      }\n    }\n  }\n}\n',
             },
+            {
+              operationName: 'getOrderList',
+              variables: {
+                params: {
+                  statusOrder: 'all',
+                  typeOrder: 'all',
+                  dateOrder: 0,
+                  search: '',
+                  page: 1,
+                  size: 4,
+                },
+              },
+              query:
+                'query getOrderList($params: OrderListRequest!) {\n  getOrderList(params: $params) {\n    meta {\n      message\n      error\n      code\n      page\n      size\n      totalData\n      totalPage\n    }\n    result {\n      orderID\n      storeStrukID\n      statusOrder\n      statusOrderCode\n      cart {\n        isNonReview\n        deliveryEstimate\n        cartID\n        brandID\n        productID\n        productName\n        productImage\n        productQuantity\n        productPrice\n        productSlicePrice\n        productTotalPrice\n        productSlug\n        productUrlTracking\n        productDiscount\n        productStock\n        productIsWishlist\n        productStatus {\n          isOos\n          isComingSoon\n          isReady\n          isPreorder\n          isLatest\n        }\n        productLabel {\n          isFreeShipping\n          isFreeInsurance\n          isFlashSale\n          isBundlingStrap\n          isNewArrival\n          isJdm\n          isBestSeller\n          event {\n            status\n            badge\n            title\n          }\n        }\n        productRewardPoint {\n          label\n          value\n        }\n        productBundling {\n          cartID\n          brandID\n          productID\n          productName\n          productImage\n          productQuantity\n          productPrice\n          productSlicePrice\n          productTotalPrice\n          productSlug\n          productDiscount\n          productStock\n          productIsWishlist\n          productStatus {\n            isOos\n            isComingSoon\n            isReady\n            isPreorder\n            isLatest\n          }\n          productLabel {\n            isFreeShipping\n            isFreeInsurance\n            isFlashSale\n            isBundlingStrap\n            isNewArrival\n            isJdm\n            isBestSeller\n            event {\n              status\n              badge\n              title\n            }\n          }\n          productRewardPoint {\n            label\n            value\n          }\n          productMaxBuy\n          productInfoStock\n          productWeight\n          productInfoWeight\n          cartMessage\n        }\n        productMaxBuy\n        productInfoStock\n        productWeight\n        productInfoWeight\n        isChecked\n        cartMessage\n      }\n      shipping {\n        info\n        code\n      }\n      payment {\n        paymentCode\n        paymentName\n        paymentDirectUrl\n        isSingleAttempt3rdParty\n      }\n      paymentExpire\n      createdAt\n      totalBill\n      totalCart\n      note\n      infoCancel\n      isReceived\n      isReviewed\n      isWithinReviewPeriod\n      isHaveResi\n      totalResi\n      source\n      isShowReviewButton\n      isShowReviewButtonV2\n    }\n  }\n}\n',
+            },
           ]),
           headers,
         }).then(async (response) => {
-          const res: any = await response.json();
+          const res: any[] = await response.json();
+
+          if (
+            res[res.length - 1].data.getOrderList.result.length === 0 ||
+            res[res.length - 1].data.getOrderList.result[0].statusOrderCode !==
+              'notYetPaid'
+          ) {
+            throw new Error('Gagal co harus ulang!');
+          }
+
           console.log(`~success ${JSON.stringify(res)}`);
           return res;
         });
