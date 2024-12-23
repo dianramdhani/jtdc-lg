@@ -30,7 +30,7 @@ describe('CheckoutService', () => {
         where: { username: 'serenity.petal@gmx.com' },
       });
       // const time = format(addMinutes(new Date(), 1), 'HH:mm');
-      const time = '11:30';
+      const time = '12:06';
       const parsedCookies = JSON.parse(cookies) as Cookie[];
       if (parsedCookies.length) {
         console.log(`Checkout in ${time}`);

@@ -42,6 +42,23 @@ describe('AccountService', () => {
   );
 
   it(
+    'should be login accounts no cookies',
+    async () => {
+      const accounts = await prismaService.account.findMany({
+        where: { cookies: '[]' },
+      });
+      for (const account of accounts) {
+        const cookies = await accountService['loginAccount'](account.username);
+        await prismaService.account.update({
+          where: { id: account.id },
+          data: { cookies: JSON.stringify(cookies) },
+        });
+      }
+    },
+    60 * 1000,
+  );
+
+  it(
     'should be login all accounts',
     async () => {
       await accountService.login();
