@@ -27,10 +27,10 @@ describe('CheckoutService', () => {
     'should be checkout',
     async () => {
       const { cookies } = await prismaService.account.findFirst({
-        where: { username: 'serenity.petal@gmx.com' },
+        where: { username: 'twilight.spark@gmx.com' },
       });
       // const time = format(addMinutes(new Date(), 1), 'HH:mm');
-      const time = '12:06';
+      const time = '06:44';
       const parsedCookies = JSON.parse(cookies) as Cookie[];
       if (parsedCookies.length) {
         console.log(`Checkout in ${time}`);

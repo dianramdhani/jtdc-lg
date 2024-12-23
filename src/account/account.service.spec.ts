@@ -59,6 +59,21 @@ describe('AccountService', () => {
   );
 
   it(
+    'should be login specific account with no cookies',
+    async () => {
+      const { username, id } = await prismaService.account.findFirst({
+        where: { username: 'twilight.spark@gmx.com' },
+      });
+      const cookies = await accountService['loginAccount'](username);
+      await prismaService.account.update({
+        where: { id },
+        data: { cookies: JSON.stringify(cookies) },
+      });
+    },
+    60 * 1000,
+  );
+
+  it(
     'should be login all accounts',
     async () => {
       await accountService.login();

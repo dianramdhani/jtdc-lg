@@ -134,6 +134,16 @@ export class CheckoutService {
                 'mutation updateSummaryPayment($request: UpdateSummaryPaymentRequest!) {\n  updateSummaryPayment(request: $request) {\n    meta {\n      message\n      error\n      code\n    }\n    result {\n      status\n    }\n  }\n}\n',
             },
             {
+              operationName: 'updateSummaryJTPoint',
+              variables: {
+                request: {
+                  isJTPoint: true,
+                },
+              },
+              query:
+                'mutation updateSummaryJTPoint($request: UpdateSummaryJTPointRequest!) {\n  updateSummaryJTPoint(request: $request) {\n    meta {\n      message\n      error\n      code\n    }\n    result {\n      status\n    }\n  }\n}\n',
+            },
+            {
               operationName: 'getSummaryCheckoutV2',
               variables: {
                 request: {
