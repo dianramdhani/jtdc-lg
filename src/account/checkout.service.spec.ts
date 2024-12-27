@@ -3,6 +3,7 @@ import { CheckoutService } from './checkout.service';
 import { PrismaService } from 'src/database/prisma/prisma.service';
 import { Cookie } from 'puppeteer';
 import { ScheduleModule } from '@nestjs/schedule';
+import { addMinutes, format } from 'date-fns';
 
 describe('CheckoutService', () => {
   let checkoutService: CheckoutService;
@@ -43,13 +44,8 @@ describe('CheckoutService', () => {
   it(
     'should be checkout all accounts',
     async () => {
-      const usernames = [
-        'aurora.dreamer@gmx.com',
-        'twilight.spark@gmx.com',
-        'luminous.tracker@gmx.com',
-        'twilight.rover@gmx.com',
-      ];
-      const time = '00:00';
+      const usernames = ['twilight.spark@gmx.com', 'luminous.tracker@gmx.com'];
+      const time = '08:00';
       const allCookies = await Promise.all(
         usernames.map(async (username) => {
           const { cookies } = await prismaService.account.findFirst({
@@ -62,6 +58,39 @@ describe('CheckoutService', () => {
       await Promise.all(
         allCookies.map((cookies) => checkoutService.checkout(cookies, time)),
       );
+    },
+    6 * 60 * 60 * 1000,
+  );
+
+  it(
+    'should be checkout 2 accounts',
+    async () => {
+      const seiko = await prismaService.account.findFirst({
+        where: { username: 'mystic.whisperer@gmx.com' },
+      });
+      const jamDinding = await prismaService.account.findFirst({
+        where: { username: 'moonbeam.traveler@gmx.com' },
+      });
+      const time = '00:00';
+      await Promise.all([
+        checkoutService.checkout(JSON.parse(seiko.cookies) as Cookie[], time),
+        checkoutService.checkout2(
+          JSON.parse(jamDinding.cookies) as Cookie[],
+          time,
+        ),
+      ]);
+    },
+    6 * 60 * 60 * 1000,
+  );
+
+  it(
+    'should be add to cart and checkout',
+    async () => {
+      const time = format(addMinutes(new Date(), 1), 'HH:mm');
+      const { cookies } = await prismaService.account.findFirst({
+        where: { username: 'moonbeam.traveler@gmx.com' },
+      });
+      await checkoutService.checkout2(JSON.parse(cookies) as Cookie[], time);
     },
     6 * 60 * 60 * 1000,
   );

@@ -234,6 +234,34 @@ const res2 = [
 fetch('https://gateway.jamtangan.com/query', {
   headers: {
     authorization:
+      'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3NfdXVpZCI6Ijk2MTA4ZTg5LTg2NTYtNDZmZi1iMTZjLTdjOWZlMDljOWZhMiIsImFjY291bnRfZW1haWwiOiJteXN0aWMud2hpc3BlcmVyQGdteC5jb20iLCJhY2NvdW50X2lkIjo4NDMzMDAsImFjY291bnRfdHlwZSI6IlVTRVIiLCJleHAiOjE3MzUwNTY1MjMsImlzX2xvZ2luIjp0cnVlfQ.AlPBxZk3_3hzpEy4dWDFa_LmMKVVoKyXmTdAI4iPLqc',
+  },
+  body: JSON.stringify([
+    {
+      operationName: 'addToCart',
+      variables: {
+        params: {
+          entryPoint: 'detail',
+          productID: 69059,
+          productQuantity: 1,
+          itemListID: 'Event',
+          itemListName: 'Event All Brand Seiko',
+          bundling: [],
+        },
+      },
+      query:
+        'mutation addToCart($params: AddToCartRequest!) {\n  addToCart(params: $params) {\n    __typename\n    meta {\n      __typename\n      message\n      error\n      code\n    }\n    result {\n      __typename\n      message\n    }\n  }\n}',
+    },
+  ]),
+  method: 'POST',
+}).then(async (res) => {
+  const data = await res.json();
+  console.log(data);
+});
+
+fetch('https://gateway.jamtangan.com/query', {
+  headers: {
+    authorization:
       'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3NfdXVpZCI6Ijg4YWY1ZWFiLTYyNmEtNDkyNi1hNDUxLTIwY2IyYzhkNGJhMyIsImFjY291bnRfZW1haWwiOiJzZXJlbml0eS5wZXRhbEBnbXguY29tIiwiYWNjb3VudF9pZCI6ODQ5OTQyLCJhY2NvdW50X3R5cGUiOiJVU0VSIiwiZXhwIjoxNzM0OTI2OTk1LCJpc19sb2dpbiI6dHJ1ZX0.C_6qmrvsDEoDrANN7MfVAPvJrh5lnOrFphaXJ4NsuYI',
   },
   body: JSON.stringify([

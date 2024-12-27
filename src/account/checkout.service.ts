@@ -1,15 +1,18 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { CronJob } from 'cron';
 import puppeteer, { Cookie } from 'puppeteer';
 
 @Injectable()
 export class CheckoutService {
+  private readonly logger = new Logger(CheckoutService.name);
   private headers: Record<string, string> = {};
   private addressID: number = -1;
 
   constructor() {}
 
   async checkout(cookies: Cookie[], time: string) {
+    this.logger.log(`co at ${time}`);
+
     return new Promise(async (resolve) => {
       const browser = await puppeteer.launch({
         headless: true,
@@ -55,7 +58,65 @@ export class CheckoutService {
             this.headers,
             this.addressID,
           );
-          console.log(`co time ${new Date().getTime() - start}`);
+          this.logger.log(`co time ${new Date().getTime() - start}`);
+          await browser.close();
+          resolve(true);
+        },
+        undefined,
+        true,
+        'Asia/Jakarta',
+      );
+    });
+  }
+
+  async checkout2(cookies: Cookie[], time: string) {
+    return new Promise(async (resolve) => {
+      const browser = await puppeteer.launch({
+        headless: true,
+        defaultViewport: null,
+        executablePath: process.env.CHROME_PATH,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      });
+      const page = await browser.newPage();
+      page.setRequestInterception(true);
+      page
+        .on('request', (request) => request.continue())
+        .on('response', async (response) => {
+          if (response.url().includes('/query')) {
+            try {
+              await response.json();
+              this.headers = response.request().headers();
+            } catch (error) {}
+          }
+        })
+        .on('console', (message) => {
+          const text = message.text();
+          if (!text.includes('~')) return;
+          if (text.includes('~addressID'))
+            this.addressID = Number(text.split(' ')[1]) ?? -1;
+        });
+      await page.setCookie(...cookies);
+      await page.goto(process.env.URL, {
+        waitUntil: 'networkidle2',
+      });
+      await page.evaluate(
+        this.getAddressID,
+        process.env.URL_QUERY,
+        this.headers,
+      );
+
+      const [hour, minute] = time.split(':');
+      new CronJob(
+        `${minute} ${hour} * * *`,
+        async () => {
+          const start = new Date().getTime();
+          await page.evaluate(
+            this.processCheckout2,
+            process.env.URL_QUERY,
+            this.headers,
+            this.addressID,
+          );
+          this.logger.log(`co time ${new Date().getTime() - start}`);
           await browser.close();
           resolve(true);
         },
@@ -108,6 +169,12 @@ export class CheckoutService {
                 'query processCheckoutV2 {\n  processCheckoutV2 {\n    __typename\n    meta {\n      __typename\n      message\n      error\n      code\n    }\n    result {\n      __typename\n      isContinueProcessCheckout\n      isGoToNewCheckout\n      isAddressAvailable\n    }\n  }\n}',
             },
             {
+              operationName: 'getCartListV2',
+              variables: {},
+              query:
+                'query getCartListV2 {\n  getCartListV2 {\n    __typename\n    meta {\n      __typename\n      message\n      error\n      code\n    }\n    result {\n      __typename\n      totalPoint\n      totalAmount\n      totalData\n      listCart {\n        __typename\n        productName\n        productPrice\n      }\n    }\n  }\n}',
+            },
+            {
               operationName: 'updateSummaryShipping',
               variables: {
                 request: {
@@ -134,14 +201,114 @@ export class CheckoutService {
                 'mutation updateSummaryPayment($request: UpdateSummaryPaymentRequest!) {\n  updateSummaryPayment(request: $request) {\n    meta {\n      message\n      error\n      code\n    }\n    result {\n      status\n    }\n  }\n}\n',
             },
             {
-              operationName: 'updateSummaryJTPoint',
+              operationName: 'getSummaryCheckoutV2',
               variables: {
                 request: {
-                  isJTPoint: true,
+                  isChanges: true,
                 },
               },
               query:
-                'mutation updateSummaryJTPoint($request: UpdateSummaryJTPointRequest!) {\n  updateSummaryJTPoint(request: $request) {\n    meta {\n      message\n      error\n      code\n    }\n    result {\n      status\n    }\n  }\n}\n',
+                'query getSummaryCheckoutV2($request: SummaryCheckoutV2Request!) {\n  getSummaryCheckoutV2(request: $request) {\n    meta {\n      message\n      error\n      code\n    }\n    result {\n      quantity\n      voucherAmount\n      JTPointUsed\n      bankPointRewardUsed\n      insuranceAmount\n      total\n      subTotal\n      pointReward\n      shipping {\n        shippingAmount\n        shippingFinalAmount\n      }\n      minimumPaymentInfo\n    }\n  }\n}\n',
+            },
+            {
+              operationName: 'addOrderV2',
+              variables: {},
+              query:
+                'mutation addOrderV2($request: addOrderV2Request) {\n  addOrderV2(request: $request) {\n    meta {\n      message\n      error\n      code\n    }\n    result {\n      status\n      payment {\n        status\n        orderId\n        redirectUrl\n      }\n    }\n  }\n}\n',
+            },
+            {
+              operationName: 'getOrderList',
+              variables: {
+                params: {
+                  statusOrder: 'all',
+                  typeOrder: 'all',
+                  dateOrder: 0,
+                  search: '',
+                  page: 1,
+                  size: 4,
+                },
+              },
+              query:
+                'query getOrderList($params: OrderListRequest!) {\n  getOrderList(params: $params) {\n    meta {\n      message\n      error\n      code\n      page\n      size\n      totalData\n      totalPage\n    }\n    result {\n      orderID\n      storeStrukID\n      statusOrder\n      statusOrderCode\n      cart {\n        isNonReview\n        deliveryEstimate\n        cartID\n        brandID\n        productID\n        productName\n        productImage\n        productQuantity\n        productPrice\n        productSlicePrice\n        productTotalPrice\n        productSlug\n        productUrlTracking\n        productDiscount\n        productStock\n        productIsWishlist\n        productStatus {\n          isOos\n          isComingSoon\n          isReady\n          isPreorder\n          isLatest\n        }\n        productLabel {\n          isFreeShipping\n          isFreeInsurance\n          isFlashSale\n          isBundlingStrap\n          isNewArrival\n          isJdm\n          isBestSeller\n          event {\n            status\n            badge\n            title\n          }\n        }\n        productRewardPoint {\n          label\n          value\n        }\n        productBundling {\n          cartID\n          brandID\n          productID\n          productName\n          productImage\n          productQuantity\n          productPrice\n          productSlicePrice\n          productTotalPrice\n          productSlug\n          productDiscount\n          productStock\n          productIsWishlist\n          productStatus {\n            isOos\n            isComingSoon\n            isReady\n            isPreorder\n            isLatest\n          }\n          productLabel {\n            isFreeShipping\n            isFreeInsurance\n            isFlashSale\n            isBundlingStrap\n            isNewArrival\n            isJdm\n            isBestSeller\n            event {\n              status\n              badge\n              title\n            }\n          }\n          productRewardPoint {\n            label\n            value\n          }\n          productMaxBuy\n          productInfoStock\n          productWeight\n          productInfoWeight\n          cartMessage\n        }\n        productMaxBuy\n        productInfoStock\n        productWeight\n        productInfoWeight\n        isChecked\n        cartMessage\n      }\n      shipping {\n        info\n        code\n      }\n      payment {\n        paymentCode\n        paymentName\n        paymentDirectUrl\n        isSingleAttempt3rdParty\n      }\n      paymentExpire\n      createdAt\n      totalBill\n      totalCart\n      note\n      infoCancel\n      isReceived\n      isReviewed\n      isWithinReviewPeriod\n      isHaveResi\n      totalResi\n      source\n      isShowReviewButton\n      isShowReviewButtonV2\n    }\n  }\n}\n',
+            },
+          ]),
+          headers,
+        }).then(async (response) => {
+          const res: any[] = await response.json();
+
+          if (
+            res[res.length - 1].data.getOrderList.result.length === 0 ||
+            res[res.length - 1].data.getOrderList.result[0].statusOrderCode !==
+              'notYetPaid'
+          ) {
+            throw new Error('Gagal co harus ulang!');
+          }
+
+          console.log(`~success ${JSON.stringify(res)}`);
+          return res;
+        });
+      } catch (error) {
+        if (error instanceof Error) console.log(`~error ${error.message}`);
+      }
+    } while (!res);
+  }
+
+  private async processCheckout2(
+    urlQuery: string,
+    headers: typeof this.headers,
+    addressID: number,
+  ) {
+    let res: any;
+    do {
+      try {
+        res = await fetch(urlQuery, {
+          method: 'POST',
+          body: JSON.stringify([
+            {
+              operationName: 'addToCart',
+              variables: {
+                params: {
+                  entryPoint: 'detail',
+                  productID: 57513,
+                  productQuantity: 1,
+                  itemListID: 'Event',
+                  itemListName: 'Event All Brand Citizen',
+                },
+              },
+              query:
+                'mutation addToCart($params: AddToCartRequest!) {\n  addToCart(params: $params) {\n    meta {\n      message\n      error\n      code\n    }\n    result {\n      message\n    }\n  }\n}\n',
+            },
+            {
+              operationName: 'processCheckoutV2',
+              variables: {},
+              query:
+                'query processCheckoutV2 {\n  processCheckoutV2 {\n    __typename\n    meta {\n      __typename\n      message\n      error\n      code\n    }\n    result {\n      __typename\n      isContinueProcessCheckout\n      isGoToNewCheckout\n      isAddressAvailable\n    }\n  }\n}',
+            },
+            {
+              operationName: 'updateSummaryShipping',
+              variables: {
+                request: {
+                  addressID,
+                  shippingID: 4,
+                },
+              },
+              query:
+                'mutation updateSummaryShipping($request: UpdateSummaryShippingRequest!) {\n  updateSummaryShipping(request: $request) {\n    meta {\n      message\n      error\n      code\n    }\n    result {\n      status\n    }\n  }\n}\n',
+            },
+            {
+              operationName: 'updateSummaryPayment',
+              variables: {
+                request: {
+                  paymentID: 57,
+                  paymentCode: 'VABCA',
+                  paymentParentCode: 'VirtualAccount',
+                  paymentName: 'Virtual Account',
+                  paymentChildName: 'BCA Virtual Account',
+                  minimumAmount: 10000,
+                },
+              },
+              query:
+                'mutation updateSummaryPayment($request: UpdateSummaryPaymentRequest!) {\n  updateSummaryPayment(request: $request) {\n    meta {\n      message\n      error\n      code\n    }\n    result {\n      status\n    }\n  }\n}\n',
             },
             {
               operationName: 'getSummaryCheckoutV2',

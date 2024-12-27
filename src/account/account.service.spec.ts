@@ -62,7 +62,7 @@ describe('AccountService', () => {
     'should be login specific account with no cookies',
     async () => {
       const { username, id } = await prismaService.account.findFirst({
-        where: { username: 'twilight.spark@gmx.com' },
+        where: { username: 'moonbeam.traveler@gmx.com' },
       });
       const cookies = await accountService['loginAccount'](username);
       await prismaService.account.update({
